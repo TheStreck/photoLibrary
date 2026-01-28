@@ -1,0 +1,124 @@
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+.material-icons {
+    font-family: 'Material Icons';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'liga';
+}
+
+/* View Mode Styles */
+.view-grid-compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.view-grid-large {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.view-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.view-list .image-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-list .image-item:hover {
+    background: #f3f4f6;
+    transform: translateX(4px);
+}
+
+.view-list .image-item.selected {
+    border-left: 4px solid #3b82f6;
+    background: #eff6ff;
+}
+
+.view-list img {
+    width: 60px;
+    height: 60px;
+    border-radius: 0.25rem;
+    margin-right: 1rem;
+}
+
+.view-list .image-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.view-list .image-name {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.view-list .image-meta {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.view-grid-compact img, .view-grid-large img {
+    width: 100%;
+    object-fit: cover;
+    aspect-ratio: 1 / 1;
+    border-radius: 0.5rem;
+}
+
+.view-grid-compact .image-info, .view-grid-large .image-info {
+    display: none;
+}
+
+/* Sidebar Management Icons */
+.sidebar-item-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+#sidebar-nav li:hover .sidebar-item-actions {
+    opacity: 1;
+}
+
+.action-icon {
+    font-size: 18px !important;
+    padding: 2px;
+    border-radius: 4px;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.action-icon:hover {
+    background-color: rgba(0,0,0,0.1);
+    color: #1f2937;
+}
+
+.action-icon.delete:hover {
+    color: #ef4444;
+}
