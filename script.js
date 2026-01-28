@@ -86,31 +86,37 @@ document.addEventListener('DOMContentLoaded', () => {
     modalCancel.onclick = closeModal;
     window.onclick = (e) => { if (e.target === modalAdd) closeModal(); };
 
-    formAdd.onsubmit = (e) => {
+    formAdd.onsubmit = async (e) => {
         e.preventDefault();
         
+        const url = document.getElementById('new-url').value;
+        const fileName = document.getElementById('new-filename').value;
         const newAlbumInput = document.getElementById('add-new-album').value.trim();
         const newCategoryInput = document.getElementById('add-new-category').value.trim();
-        
-        const album = newAlbumInput || selectAlbum.value || "Default Album";
-        const category = newCategoryInput || selectCategory.value || "Default Category";
+        const contentVal = document.getElementById('new-content').value;
+
+        const album = newAlbumInput || selectAlbum.value || "Sin clasificar";
+        const category = newCategoryInput || selectCategory.value || "Sin clasificar";
+
+        // Extract colors automatically
+        const extracted = await extractColorsFromImage(url);
 
         const newImage = {
             id: Date.now(),
-            url: document.getElementById('new-url').value,
-            fileName: document.getElementById('new-filename').value,
+            url: url,
+            fileName: fileName,
             album: album,
             category: category,
             dateTaken: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            dimensions: "Original",
-            size: "Unknown",
-            colors: ["#6B7280", "#9CA3AF"],
-            colorNames: ["gray", "lightgray"],
-            tags: ["new"],
+            dimensions: "Procesando...",
+            size: "Original",
+            colors: extracted.hexCodes,
+            colorNames: extracted.names,
+            tags: ["new", category.toLowerCase()],
             type: "image/jpeg",
-            description: document.getElementById('new-content').value,
-            content: document.getElementById('new-content').value,
-            alt: document.getElementById('new-filename').value
+            description: contentVal,
+            content: contentVal,
+            alt: fileName
         };
 
         imagesData.push(newImage);
@@ -119,8 +125,82 @@ document.addEventListener('DOMContentLoaded', () => {
         renderGrid();
         updatePreview(newImage);
         selectedImageId = newImage.id;
-        renderGrid(); // Rerender to show selection
+        renderGrid();
+
+        // Optional: Update dimensions once image is loaded in UI
+        const tempImg = new Image();
+        tempImg.src = url;
+        tempImg.onload = () => {
+            newImage.dimensions = `${tempImg.width} x ${tempImg.height}`;
+            if (selectedImageId === newImage.id) {
+                document.getElementById('detail-dimensions').textContent = newImage.dimensions;
+            }
+        };
     };
+
+    async function extractColorsFromImage(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = url;
+            
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 50;
+                canvas.height = 50;
+                ctx.drawImage(img, 0, 0, 50, 50);
+                
+                const imageData = ctx.getImageData(0, 0, 50, 50).data;
+                const colorMap = {};
+                
+                for (let i = 0; i < imageData.length; i += 4) {
+                    const r = Math.round(imageData[i] / 10) * 10;
+                    const g = Math.round(imageData[i+1] / 10) * 10;
+                    const b = Math.round(imageData[i+2] / 10) * 10;
+                    const rgb = `${r},${g},${b}`;
+                    if (imageData[i+3] > 128) {
+                        colorMap[rgb] = (colorMap[rgb] || 0) + 1;
+                    }
+                }
+                
+                const sortedColors = Object.keys(colorMap).sort((a, b) => colorMap[b] - colorMap[a]);
+                const topRgb = sortedColors.slice(0, 5);
+                
+                const hexCodes = topRgb.map(rgb => {
+                    const [r, g, b] = rgb.split(',').map(Number);
+                    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+                });
+
+                const names = hexCodes.map(hex => getApproxColorName(hex));
+                
+                resolve({ hexCodes, names });
+            };
+
+            img.onerror = () => {
+                resolve({ 
+                    hexCodes: ["#6B7280", "#9CA3AF", "#D1D5DB", "#E5E7EB", "#F3F4F6"], 
+                    names: ["Gray", "Silver", "Light Gray", "Platinum", "White Smoke"] 
+                });
+            };
+        });
+    }
+
+    function getApproxColorName(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        
+        // Simple heuristic for basic color names
+        if (r > 200 && g > 200 && b > 200) return "White";
+        if (r < 50 && g < 50 && b < 50) return "Black";
+        if (r > g + 40 && r > b + 40) return r > 200 && g > 150 ? "Orange" : "Red";
+        if (g > r + 40 && g > b + 40) return "Green";
+        if (b > r + 40 && b > g + 40) return "Blue";
+        if (r > 150 && g > 150 && b < 100) return "Yellow";
+        if (r > 150 && b > 150 && g < 100) return "Purple";
+        return "Gray";
+    }
 
     // Tab Switching Logic
     tabButtons.forEach(btn => {
@@ -328,9 +408,15 @@ document.addEventListener('DOMContentLoaded', () => {
         detailColorsSimple.innerHTML = '';
         image.colors.forEach((color, index) => {
             const div = document.createElement('div');
-            div.className = 'w-6 h-6 rounded-full shadow-sm cursor-help';
+            div.className = 'w-6 h-6 rounded-full shadow-sm cursor-copy transition-transform hover:scale-110 active:scale-95';
             div.style.backgroundColor = color;
-            div.title = `${image.colorNames[index]} (${color})`;
+            div.title = `Click to copy: ${image.colorNames[index]} (${color})`;
+            
+            div.onclick = (e) => {
+                e.stopPropagation();
+                copyToClipboard(color, div);
+            };
+            
             detailColorsSimple.appendChild(div);
         });
 
@@ -339,15 +425,44 @@ document.addEventListener('DOMContentLoaded', () => {
         image.colors.forEach((color, index) => {
             const colorName = image.colorNames[index];
             const div = document.createElement('div');
-            div.className = 'flex items-center p-2 rounded-lg bg-gray-50 border border-gray-100';
+            div.className = 'flex items-center p-2 rounded-lg bg-gray-50 border border-gray-100 cursor-copy hover:bg-gray-100 transition-colors active:bg-gray-200';
             div.innerHTML = `
                 <div class="w-8 h-8 rounded shadow-sm mr-3" style="background-color: ${color}"></div>
                 <div class="flex flex-col">
                     <span class="text-xs font-semibold text-gray-800 uppercase">${colorName}</span>
                     <span class="text-[10px] text-gray-500 font-mono">${color}</span>
                 </div>
+                <span class="material-icons ml-auto text-gray-300 text-sm copy-confirm hidden">check</span>
             `;
+            
+            div.onclick = () => copyToClipboard(color, div);
+            
             detailColors.appendChild(div);
+        });
+    }
+
+    function copyToClipboard(text, element) {
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            const originalTitle = element.title;
+            const confirmIcon = element.querySelector('.copy-confirm');
+            
+            if (confirmIcon) {
+                confirmIcon.classList.remove('hidden');
+                confirmIcon.classList.add('text-green-500');
+            } else {
+                element.style.ring = "2px solid #10B981";
+            }
+
+            const feedback = document.createElement('div');
+            feedback.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-xl text-sm z-50 animate-bounce';
+            feedback.textContent = `Copied: ${text}`;
+            document.body.appendChild(feedback);
+
+            setTimeout(() => {
+                feedback.remove();
+                if (confirmIcon) confirmIcon.classList.add('hidden');
+            }, 2000);
         });
     }
 
